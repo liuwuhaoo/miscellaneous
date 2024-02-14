@@ -1,0 +1,126 @@
+<div id="fieldContent">{{Front}}</div>
+
+{{FrontSide}}
+
+<hr id=answer>
+
+<br >
+<br >
+
+<form id="myForm">
+    <input type="text" id="userInput" placeholder="Enter something...">
+    <!-- <button type="submit" id="submitButton">Send</button> -->
+</form>
+
+<button id="showTranslationsButton">Practice Translation?</button>
+
+<!-- Initially hidden translations -->
+<div id="source_sentence" style="display:none;"></div>
+<div id="response" style="display:none;"></div>
+
+
+<script>
+
+
+
+var lang = "English";
+var debug = true;
+// Access the element containing the field content
+var fieldContentElement = debug ? "Anhang" : document.getElementById("fieldContent").innerText;
+
+
+var prompt_source =
+"Provide a sentence in " + lang + " for translation practice of the word " + fieldContentElement + ", showcasing its general use.";
+  // "German Word: " +
+  // fieldContentElement +
+  // ". Give me a source sentence in " + lang + ".  which related to this word. I want only the sentence.";
+
+if (debug) {
+  console.log(prompt_source);
+}
+
+
+
+function sendApiRequest({prompt, onSuccess}) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "https://api.openai.com/v1/chat/completions", true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  // SECURITY NOTE: The API Key should not be exposed in client-side code like this.
+  // Consider securely retrieving it or using server-side code to handle the API request.
+  xhr.setRequestHeader(
+    "Authorization",
+    "Bearer sk-API_KEY"
+  );
+
+  var body = {
+    model: "gpt-3.5-turbo",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.7,
+  }
+
+  
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const response = JSON.parse(xhr.responseText);
+      if (!response) {
+        return;
+      }
+      if (debug) {
+        console.log(response.choices[0].message.content);
+      }
+      onSuccess(response.choices[0].message.content);
+    } else {
+      if (debug) {
+        console.error("Error by request!!!");
+      }
+    }
+  };
+  
+  xhr.send(JSON.stringify(body));
+}
+
+var source_sentence;
+function request_source() {
+  var prompt = prompt_source;
+  sendApiRequest({
+    prompt,
+    onSuccess: function(response) {
+      source_sentence = response;
+      // Handle and display the response (adjust according to the actual response structure)
+      document.getElementById("source_sentence").innerText = source_sentence;
+    }
+  })
+}
+
+
+function sendRequestToOpenAI() {
+  var userInput = document.getElementById("userInput").value;
+  var prompt = "German translation of the sentence: " + source_sentence +". My attempt: '" + userInput +
+  "'.  Is my answer grammatically correct and natural, and is my answer a correct translation of the source sentence?";
+
+  if (debug) {
+    console.log(prompt);
+  }
+
+  sendApiRequest({
+    prompt,
+    onSuccess: function(response) {
+      document.getElementById("response").innerText = response;
+    }
+  })
+}
+
+document.getElementById('showTranslationsButton').onclick = function(event) {
+  document.getElementById('source_sentence').style.display = 'block';
+  document.getElementById('source_sentence').innerText = '';
+  document.getElementById('response').style.display = 'block';
+  document.getElementById('response').innerText = '';
+  request_source();
+}
+
+document.getElementById('myForm').onsubmit = function(event) {
+    event.preventDefault();
+	  document.getElementById("userInput").blur()
+    sendRequestToOpenAI();
+};
+</script>
